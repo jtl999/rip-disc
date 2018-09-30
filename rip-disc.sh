@@ -20,11 +20,10 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-TMPDIR=`mktemp -d '/tmp/rip-disc.XXX'`
+TMPDIR=`mktemp -d '/data/cdrips/.tmp/rip-disc.XXX'`
 DESTDIR=`pwd`
-TAGGER=`which picard`
 RELEASE_ID=''
-DRIVE='/dev/cdrom'
+DRIVE='/dev/sr0'
 
 while getopts 't:d:r:c:' OPT; do
   case $OPT in
@@ -56,8 +55,8 @@ while getopts 't:d:r:c:' OPT; do
   esac
 done
 
-TRACK_TEMPLATE='%A - %d (%y) [%X]/%t. %a - %n'
-DISC_TEMPLATE='%A - %d (%y) [%X]/%A - %d'
+TRACK_TEMPLATE='%A/%d/%t - %n'
+DISC_TEMPLATE='%A/%d/'
 
 _ripcmd="whipper cd --device='$DRIVE' rip --cdr --prompt \
 --working-directory='$TMPDIR' --output-directory='' \
@@ -82,22 +81,5 @@ whipper cd --device="$DRIVE" rip --cdr --prompt \
 
 discdir=`ls $TMPDIR/`
 echo "... Working with $discdir."
-
-echo '... Recompressing and calculating ReplayGain.'
-flac --preserve-modtime --replay-gain --best --verify --force $TMPDIR/*/*.flac
-
-echo '... Additionally tag files.'
-$TAGGER "$TMPDIR/$discdir"
-
-echo '... Submitting to AcousticBrainz.'
-find "$TMPDIR/$discdir" -name '*.flac' -print0 | parallel --null --eta abzsubmit
-
-# echo '... Generating torrent file.'
-# mktor ...
-
-echo '... Compress into archive.'
-mv "$TOCFILE" "$TMPDIR/$discdir/CD.toc"
-7z a -t7z -m0=lzma2 -mx=9 -mfb=64 -md=32m -ms=on -mmt=on "$TMPDIR/$discdir.7z" "$TMPDIR/$discdir"
-
-echo '... Moving archive.'
-rsync -avz --remove-sent-files --progress "$TMPDIR/$discdir.7z" "$DESTDIR" && rm -rf "$TMPDIR/$discdir"
+mv "$TMPDIR/$discdir" /data/cdrips
+rm -rf "$TMPDIR"
