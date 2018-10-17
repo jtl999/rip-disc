@@ -1,7 +1,8 @@
 #!/bin/dash
 
 # Copyright © 2013–2017 Frederik “Freso” S. Olesen <https://freso.dk/>
-#
+# 
+# Copyright © 2018 JTL
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to
 # deal in the Software without restriction, including without limitation the
@@ -19,9 +20,8 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-
-TMPDIR=`mktemp -d '/data/cdrips/.tmp/rip-disc.XXX'`
-DESTDIR=`pwd`
+DESTDIR="/data/cdrips"
+TMPDIR=`mktemp -d "$DESTDIR/.tmp/rip-disc.XXX'"`
 RELEASE_ID=''
 DRIVE='/dev/sr0'
 
@@ -56,9 +56,9 @@ while getopts 't:d:r:c:' OPT; do
 done
 
 TRACK_TEMPLATE='%A/%d/%t - %n'
-DISC_TEMPLATE='%A/%d/'
+DISC_TEMPLATE='%A/%d/%d'
 
-_ripcmd="whipper cd --device='$DRIVE' rip --cdr --prompt \
+_ripcmd="whipper cd --device='$DRIVE' rip --cdr \
 --working-directory='$TMPDIR' --output-directory='' \
 --track-template='$TRACK_TEMPLATE' --disc-template='$DISC_TEMPLATE' \
 --release-id='$RELEASE_ID'"
@@ -66,7 +66,6 @@ _ripcmd="whipper cd --device='$DRIVE' rip --cdr --prompt \
 echo "Ripping to: $TMPDIR"
 
 eject --trayclose "$DRIVE"
-
 echo '... Extracting TOC.'
 TOCFILE=$(mktemp --dry-run --suffix .toc)
 cdrdao read-toc --device "$DRIVE" "$TOCFILE"
@@ -74,12 +73,13 @@ cdrdao read-toc --device "$DRIVE" "$TOCFILE"
 echo '... Ripping the CD.'
 echo "    Using: $_ripcmd"
 
-whipper cd --device="$DRIVE" rip --cdr --prompt \
---working-directory="$TMPDIR" --output-directory='' \
---track-template="$TRACK_TEMPLATE" --disc-template="$DISC_TEMPLATE" \
---release-id="$RELEASE_ID" || exit 1
+#whipper cd --device="$DRIVE" rip --cdr \
+#--working-directory="$TMPDIR" --output-directory='' \
+#--track-template="$TRACK_TEMPLATE" --disc-template="$DISC_TEMPLATE" \
+#--release-id="$RELEASE_ID" || exit 1
+eval $_ripcmd
 
 discdir=`ls $TMPDIR/`
-echo "... Working with $discdir."
-mv "$TMPDIR/$discdir" /data/cdrips
+echo "... Copying CD rip to $DESTDIR"
+rsync -av "$TMPDIR/$discdir" "$DESTDIR/"
 rm -rf "$TMPDIR"
